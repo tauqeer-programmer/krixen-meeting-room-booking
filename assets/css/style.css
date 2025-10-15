@@ -1,0 +1,72 @@
+/* Basic styles for Krixen booking form */
+.krixen-booking-form {
+    max-width: 500px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.krixen-brand{max-width:500px;margin:10px auto 0;display:flex;align-items:center;}
+.krixen-logo{max-width:180px;height:auto;}
+.krixen-logo-text{font-weight:800;font-size:20px;color:#0f172a;}
+.krixen-field {
+    margin-bottom: 15px;
+    display:flex;
+    flex-direction:column;
+}
+.krixen-field label {
+    font-weight:600;
+    margin-bottom:5px;
+}
+.krixen-field input,
+.krixen-field select,
+.krixen-field textarea {
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width:100%;
+}
+.krixen-two-cols{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:10px;
+}
+.krixen-btn{
+    background:#1E3A8A;
+    color:#fff;
+    padding:10px 20px;
+    border:none;
+    border-radius:4px;
+    cursor:pointer;
+}
+.krixen-btn:hover{
+    background:#163273;
+}
+.krixen-message{margin-top:15px;font-weight:600;}
+.krixen-availability{margin:10px 0;padding:10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;}
+.krixen-availability-title{font-weight:600;margin-bottom:6px;}
+.krixen-availability-slot{display:inline-block;margin:4px 6px 0 0;padding:4px 8px;background:#fee2e2;color:#991b1b;border-radius:4px;font-size:12px;}
+.krixen-availability-free{color:#065f46;background:#d1fae5;display:inline-block;padding:4px 8px;border-radius:4px;font-size:12px;}
+.krixen-room-tabs{display:flex;gap:8px;justify-content:center;margin:10px auto 6px;}
+.krixen-room-tab{background:#f3f4f6;border:1px solid #e5e7eb;color:#111827;padding:8px 14px;border-radius:9999px;cursor:pointer;}
+.krixen-room-tab.active,.krixen-room-tab:hover{background:#1E3A8A;color:#fff;border-color:#1E3A8A;}
+.krixen-room-status{max-width:500px;margin:0 auto 8px;font-weight:600;color:#1f2937;}
+.krixen-room-status.ok{color:#065f46;}
+.krixen-room-status.warn{color:#991b1b;}
+.krixen-rooms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:900px;margin:16px auto;}
+.krixen-room-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05);transition:transform .2s ease;}
+.krixen-room-card:hover{transform:translateY(-2px);}
+.krixen-room-card img{width:100%;height:160px;object-fit:cover;}
+.krixen-room-card-body{padding:12px;}
+.krixen-room-name{font-weight:800;color:#0f172a;}
+.krixen-room-capacity{color:#6b7280;font-size:12px;margin-top:2px;}
+.krixen-room-desc{color:#374151;font-size:13px;margin-top:6px;}
+.krixen-room-status-badge{margin:8px 0;display:inline-block;padding:4px 8px;border-radius:9999px;background:#f3f4f6;font-size:12px;}
+.slot-row{font-size:12px;margin:2px 0;}
+.badge-ok{background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:9999px;}
+.badge-no{background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:9999px;}
+@media(max-width:600px){
+    .krixen-two-cols{grid-template-columns:1fr;}
+    .krixen-rooms-grid{grid-template-columns:1fr;}
+}
