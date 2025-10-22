@@ -1,0 +1,108 @@
+/**
+ * Krixen Admin Styles
+ * 
+ * Modern admin interface styling.
+ * 
+ * @package Krixen
+ * @since 2.0.0
+ */
+
+.krixen-admin-wrap {
+	max-width: 1200px;
+}
+
+.krixen-logo-container {
+	margin: 16px 0;
+}
+
+.krixen-admin-logo {
+	max-width: 160px;
+	height: auto;
+}
+
+/* Stats Grid */
+.krixen-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 16px;
+	margin: 24px 0;
+}
+
+.krixen-stat-card {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	background: #ffffff;
+	border: 1px solid #e5e7eb;
+	border-radius: 12px;
+	padding: 20px;
+	box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+	transition: all 0.2s ease;
+}
+
+.krixen-stat-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.krixen-stat-icon {
+	font-size: 32px;
+	width: 48px;
+	height: 48px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
+	color: #ffffff;
+	border-radius: 12px;
+}
+
+.krixen-stat-content {
+	flex: 1;
+}
+
+.krixen-stat-title {
+	font-size: 13px;
+	color: #6b7280;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	font-weight: 600;
+}
+
+.krixen-stat-value {
+	font-size: 28px;
+	font-weight: 700;
+	color: #111827;
+	margin-top: 4px;
+}
+
+/* Settings Form */
+.krixen-settings-form .form-table th {
+	padding-top: 20px;
+	font-weight: 600;
+}
+
+.krixen-logo-preview {
+	margin-top: 12px;
+}
+
+.krixen-logo-preview img {
+	max-width: 200px;
+	height: auto;
+	border: 1px solid #e5e7eb;
+	border-radius: 8px;
+	padding: 8px;
+	background: #f9fafb;
+}
+
+.krixen-settings-form .description {
+	color: #6b7280;
+	font-size: 13px;
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+	.krixen-stats {
+		grid-template-columns: 1fr;
+	}
+}
