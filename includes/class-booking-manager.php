@@ -45,8 +45,11 @@ class Booking_Manager {
     }
 
     public function enqueue_assets() {
-        wp_enqueue_style( 'krixen-style', KRIXEN_PLUGIN_URL . 'assets/css/style.css', [], '1.0.0' );
-        wp_enqueue_script( 'krixen-js', KRIXEN_PLUGIN_URL . 'assets/js/form.js', [ 'jquery' ], '1.0.0', true );
+        wp_enqueue_style( 'krixen-style', KRIXEN_PLUGIN_URL . 'assets/css/style.css', [], '1.0.1' );
+        wp_enqueue_script( 'krixen-js', KRIXEN_PLUGIN_URL . 'assets/js/form.js', [], '1.0.1', true );
+        if ( function_exists('wp_script_add_data') ) {
+            wp_script_add_data( 'krixen-js', 'defer', true );
+        }
         wp_localize_script( 'krixen-js', 'KrixenBooking', [
             'ajax_url' => admin_url( 'admin-ajax.php' ),
             'nonce'    => wp_create_nonce( 'krixen_booking_nonce' ),
@@ -80,21 +83,25 @@ class Booking_Manager {
             <?php endif; ?>
         </div>
         <div id="krixen-room-status" class="krixen-room-status" style="display:none;"></div>
-        <div class="krixen-rooms-grid">
+        <div class="krixen-rooms-grid" role="list" aria-label="<?php echo esc_attr__('Available rooms','krixen'); ?>">
             <?php foreach ( $rooms as $room ) : ?>
-                <div class="krixen-room-card" data-room-id="<?php echo esc_attr($room->id); ?>">
-                    <?php if ( ! empty($room->image_url) ) : ?><img src="<?php echo esc_url($room->image_url); ?>" alt="<?php echo esc_attr($room->name); ?>" /><?php endif; ?>
+                <div class="krixen-room-card" data-room-id="<?php echo esc_attr($room->id); ?>" role="listitem">
+                    <?php
+                        $img = ! empty($room->image_url) ? $room->image_url : ( KRIXEN_PLUGIN_URL . 'assets/img/no-room.svg' );
+                    ?>
+                    <img src="<?php echo esc_url($img); ?>" alt="<?php echo esc_attr($room->name ?: __('Meeting room','krixen')); ?>" />
                     <div class="krixen-room-card-body">
                         <div class="krixen-room-name"><?php echo esc_html($room->name); ?></div>
-                        <div class="krixen-room-capacity"><?php echo esc_html( sprintf( __( 'Capacity: %d', 'krixen' ), (int)$room->capacity ) ); ?></div>
+                        <div class="krixen-room-capacity"><?php echo esc_html( sprintf( __( 'Capacity: %d people', 'krixen' ), (int)$room->capacity ) ); ?></div>
                         <?php if ( ! empty($room->description) ) : ?><div class="krixen-room-desc"><?php echo esc_html($room->description); ?></div><?php endif; ?>
                         <div class="krixen-room-status-badge" data-status="unknown">&nbsp;</div>
-                        <button type="button" class="krixen-btn krixen-book-room" data-room-id="<?php echo esc_attr($room->id); ?>"><?php _e('Book This Room','krixen'); ?></button>
+                        <button type="button" class="krixen-btn krixen-book-room" data-room-id="<?php echo esc_attr($room->id); ?>" aria-label="<?php echo esc_attr( sprintf(__('Book %s','krixen'), $room->name ) ); ?>"><?php _e('Book This Room','krixen'); ?></button>
                     </div>
                 </div>
             <?php endforeach; ?>
         </div>
-        <form id="krixen-booking-form" class="krixen-booking-form" method="post" style="display:none;">
+        <?php $min_date = date('Y-m-d', current_time('timestamp')); ?>
+        <form id="krixen-booking-form" class="krixen-booking-form" method="post" style="display:none;" aria-live="polite">
             <?php wp_nonce_field( 'krixen_booking_action', 'krixen_booking_nonce_field' ); ?>
             <div class="krixen-field"><label><?php _e( 'Full Name', 'krixen' ); ?>*</label><input type="text" name="full_name" required></div>
             <div class="krixen-field"><label><?php _e( 'Email', 'krixen' ); ?>*</label><input type="email" name="email" required></div>
@@ -107,7 +114,7 @@ class Booking_Manager {
                 </select>
             </div>
             <div class="krixen-two-cols">
-                <div class="krixen-field"><label><?php _e( 'Date', 'krixen' ); ?>*</label><input type="date" name="date" value="<?php echo esc_attr($default_date); ?>" required></div>
+                <div class="krixen-field"><label><?php _e( 'Date', 'krixen' ); ?>*</label><input type="date" name="date" value="<?php echo esc_attr($default_date); ?>" min="<?php echo esc_attr($min_date); ?>" required></div>
                 <div class="krixen-field"><label><?php _e( 'Start Time', 'krixen' ); ?>*</label>
                     <select name="start_time" required></select>
                 </div>

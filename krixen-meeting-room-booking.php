@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /*
 Plugin Name: Krixen Meeting Room Booking
 Description: A simple yet powerful meeting room booking plugin.
@@ -36,6 +37,11 @@ define( 'KRIXEN_PLUGIN_FILE', __FILE__ );
 define( 'KRIXEN_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 define( 'KRIXEN_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
+
+// Load translations
+add_action( 'init', function () {
+    load_plugin_textdomain( 'krixen', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+} );
 
 // Activation hook
 register_activation_hook( __FILE__, function () {
