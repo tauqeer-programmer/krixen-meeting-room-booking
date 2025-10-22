@@ -1,45 +1,77 @@
 jQuery(document).ready(function($){
-    // Tabs: select room and check availability
-    $('.krixen-room-tab').on('click', function(){
-        $('.krixen-room-tab').removeClass('active');
-        $(this).addClass('active');
-        var roomId = $(this).data('room-id');
-        var cap    = $(this).data('capacity');
+    function todayYmd(){
+        var t = new Date();
+        var yyyy = t.getFullYear();
+        var mm = ('0'+(t.getMonth()+1)).slice(-2);
+        var dd = ('0'+t.getDate()).slice(-2);
+        return yyyy+'-'+mm+'-'+dd;
+    }
+
+    // New UX: clicking "Book This Room" moves the form under the card
+    $(document).on('click', '.krixen-book-room', function(){
+        var btn   = $(this);
+        var card  = btn.closest('.krixen-room-card');
+        var form  = $('#krixen-booking-form');
+        var roomId = btn.data('room-id') || card.data('room-id');
+        var cap    = parseInt(btn.data('capacity') || 0, 10);
+        var roomName = card.find('.krixen-room-name').text() || btn.data('room-name') || '';
+
+        // Set selected room in form
         $('select[name="room_id"]').val(roomId).trigger('change');
-        var date   = $('input[name="date"]').val();
-        if(!date){
-            // Prefill today if empty
-            var today = new Date();
-            var yyyy = today.getFullYear();
-            var mm = ('0'+(today.getMonth()+1)).slice(-2);
-            var dd = ('0'+today.getDate()).slice(-2);
-            $('input[name="date"]').val(yyyy+'-'+mm+'-'+dd);
+
+        // Ensure date has at least today
+        var dateEl = $('input[name="date"]');
+        if(!dateEl.val()){ dateEl.val(todayYmd()); }
+
+        // Show contextual status
+        var status = $('#krixen-room-status');
+        status.show().text('Checking availability for '+roomName+(cap?(' (Capacity: '+cap+')'):'')+'...').removeClass('ok warn');
+
+        // Move and reveal the form under the selected card
+        var insertAndShow = function(){
+            form.insertAfter(card);
+            form.stop(true, true).hide().slideDown(200);
+        };
+        if(form.is(':visible')){
+            form.stop(true, true).slideUp(150, insertAndShow);
+        } else {
+            insertAndShow();
         }
+
+        // Refresh availability and populate slots
         refreshAvailability(function(hasBookings){
-            $('#krixen-room-status').show();
             if(hasBookings){
-                $('#krixen-room-status').text('Some times are booked. Please choose an available time below.').removeClass('ok').addClass('warn');
+                status.text('Some times are booked. Please choose an available time below.').removeClass('ok').addClass('warn');
             } else {
-                $('#krixen-room-status').text('Room is available for the selected date.').removeClass('warn').addClass('ok');
+                status.text('Room is available for the selected date.').removeClass('warn').addClass('ok');
             }
-            $('#krixen-booking-form').show();
         });
     });
     $('#krixen-booking-form').on('submit',function(e){
         e.preventDefault();
         var form = $(this);
         var msg  = form.find('.krixen-message');
+        var submitBtn = form.find('button[type="submit"]');
         msg.hide().removeClass('error success');
         var data = form.serializeArray();
         data.push({name:'action',value:'krixen_submit_booking'});
         data.push({name:'nonce',value:KrixenBooking.nonce});
+        submitBtn.prop('disabled', true).addClass('loading');
         $.post(KrixenBooking.ajax_url,data,function(response){
             if(response.success){
                 msg.addClass('success').text(response.data).css('color','green').show();
+                // Keep room and date; rebuild slots so UI reflects the new booking
+                var keepRoom = $('select[name="room_id"]').val();
+                var keepDate = $('input[name="date"]').val();
                 form[0].reset();
+                $('select[name="room_id"]').val(keepRoom);
+                $('input[name="date"]').val(keepDate);
+                refreshAvailability();
             }else{
                 msg.addClass('error').text(response.data).css('color','red').show();
             }
+        }).always(function(){
+            submitBtn.prop('disabled', false).removeClass('loading');
         });
     });
 
@@ -62,8 +94,8 @@ jQuery(document).ready(function($){
                 resp.data.forEach(function(slot){
                     var opt = $('<option/>').val(slot.start_24).text(slot.label).prop('disabled', !slot.available).toggleClass('disabled', !slot.available);
                     startSel.append(opt);
-                    var badge = slot.available? '<span class="badge-ok">Available</span>' : '<span class="badge-no">Booked</span>';
-                    availEl.append('<div class="slot-row">'+slot.label+' '+badge+'</div>');
+                    var badge = slot.available? '<span class="badge-ok" aria-label="Available">Available</span>' : '<span class="badge-no" aria-label="Booked">Booked</span>';
+                    availEl.append('<div class="slot-row" role="listitem" aria-live="off">'+slot.label+' '+badge+'</div>');
                 });
                 // set end time based on first valid
                 var selected = startSel.find('option:not(:disabled)').first();

@@ -82,14 +82,15 @@ class Booking_Manager {
         <div id="krixen-room-status" class="krixen-room-status" style="display:none;"></div>
         <div class="krixen-rooms-grid">
             <?php foreach ( $rooms as $room ) : ?>
+                <?php $img_url = ! empty( $room->image_url ) ? $room->image_url : KRIXEN_PLUGIN_URL . 'assets/img/no-room.svg'; ?>
                 <div class="krixen-room-card" data-room-id="<?php echo esc_attr($room->id); ?>">
-                    <?php if ( ! empty($room->image_url) ) : ?><img src="<?php echo esc_url($room->image_url); ?>" alt="<?php echo esc_attr($room->name); ?>" /><?php endif; ?>
+                    <img src="<?php echo esc_url($img_url); ?>" alt="<?php echo esc_attr($room->name); ?>" />
                     <div class="krixen-room-card-body">
                         <div class="krixen-room-name"><?php echo esc_html($room->name); ?></div>
                         <div class="krixen-room-capacity"><?php echo esc_html( sprintf( __( 'Capacity: %d', 'krixen' ), (int)$room->capacity ) ); ?></div>
                         <?php if ( ! empty($room->description) ) : ?><div class="krixen-room-desc"><?php echo esc_html($room->description); ?></div><?php endif; ?>
-                        <div class="krixen-room-status-badge" data-status="unknown">&nbsp;</div>
-                        <button type="button" class="krixen-btn krixen-book-room" data-room-id="<?php echo esc_attr($room->id); ?>"><?php _e('Book This Room','krixen'); ?></button>
+                        <div class="krixen-room-status-badge" data-status="unknown" aria-live="polite">&nbsp;</div>
+                        <button type="button" class="krixen-btn krixen-book-room" data-room-id="<?php echo esc_attr($room->id); ?>" data-capacity="<?php echo esc_attr( (int) $room->capacity ); ?>" data-room-name="<?php echo esc_attr($room->name); ?>" aria-label="<?php echo esc_attr( sprintf( __( 'Book %s', 'krixen' ), $room->name ) ); ?>"><?php _e('Book This Room','krixen'); ?></button>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -107,7 +108,7 @@ class Booking_Manager {
                 </select>
             </div>
             <div class="krixen-two-cols">
-                <div class="krixen-field"><label><?php _e( 'Date', 'krixen' ); ?>*</label><input type="date" name="date" value="<?php echo esc_attr($default_date); ?>" required></div>
+                <div class="krixen-field"><label><?php _e( 'Date', 'krixen' ); ?>*</label><input type="date" name="date" value="<?php echo esc_attr($default_date); ?>" min="<?php echo esc_attr($default_date); ?>" required></div>
                 <div class="krixen-field"><label><?php _e( 'Start Time', 'krixen' ); ?>*</label>
                     <select name="start_time" required></select>
                 </div>
@@ -115,7 +116,7 @@ class Booking_Manager {
             </div>
             <div class="krixen-field">
                 <label><?php _e( 'Availability', 'krixen' ); ?></label>
-                <div id="krixen-availability" class="krixen-availability"></div>
+                <div id="krixen-availability" class="krixen-availability" aria-live="polite" role="list"></div>
             </div>
             
             <button type="submit" class="krixen-btn"><?php _e( 'Book Now', 'krixen' ); ?></button>
