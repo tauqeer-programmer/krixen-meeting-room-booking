@@ -45,8 +45,15 @@ class Booking_Manager {
     }
 
     public function enqueue_assets() {
+        // Tailwind CDN and Google Fonts for the new design
+        wp_enqueue_script( 'krixen-tailwind', 'https://cdn.tailwindcss.com', [], null, false );
+        wp_enqueue_style( 'krixen-font-inter', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap', [], null );
+
+        // Our base styles (also holds a few utility classes for animations)
         wp_enqueue_style( 'krixen-style', KRIXEN_PLUGIN_URL . 'assets/css/style.css', [], '1.0.0' );
-        wp_enqueue_script( 'krixen-js', KRIXEN_PLUGIN_URL . 'assets/js/form.js', [ 'jquery' ], '1.0.0', true );
+
+        // Frontend logic for the new Tailwind UI
+        wp_enqueue_script( 'krixen-js', KRIXEN_PLUGIN_URL . 'assets/js/form.js', [ 'jquery' ], '1.1.0', true );
         wp_localize_script( 'krixen-js', 'KrixenBooking', [
             'ajax_url' => admin_url( 'admin-ajax.php' ),
             'nonce'    => wp_create_nonce( 'krixen_booking_nonce' ),
@@ -72,56 +79,106 @@ class Booking_Manager {
         $default_end   = date('H:i', $rounded + 60 * 60);
         $default_date  = date('Y-m-d', $timestamp);
         ?>
-        <div class="krixen-brand">
-            <?php $logo = get_option('krixen_logo_url',''); if ( $logo ) : ?>
-                <img src="<?php echo esc_url($logo); ?>" alt="Krixen Booking" class="krixen-logo" />
-            <?php else : ?>
-                <div class="krixen-logo-text">Krixen Booking</div>
-            <?php endif; ?>
-        </div>
-        <div id="krixen-room-status" class="krixen-room-status" style="display:none;"></div>
-        <div class="krixen-rooms-grid">
-            <?php foreach ( $rooms as $room ) : ?>
-                <?php $img_url = ! empty( $room->image_url ) ? $room->image_url : KRIXEN_PLUGIN_URL . 'assets/img/no-room.svg'; ?>
-                <div class="krixen-room-card" data-room-id="<?php echo esc_attr($room->id); ?>">
-                    <img src="<?php echo esc_url($img_url); ?>" alt="<?php echo esc_attr($room->name); ?>" />
-                    <div class="krixen-room-card-body">
-                        <div class="krixen-room-name"><?php echo esc_html($room->name); ?></div>
-                        <div class="krixen-room-capacity"><?php echo esc_html( sprintf( __( 'Capacity: %d', 'krixen' ), (int)$room->capacity ) ); ?></div>
-                        <?php if ( ! empty($room->description) ) : ?><div class="krixen-room-desc"><?php echo esc_html($room->description); ?></div><?php endif; ?>
-                        <div class="krixen-room-status-badge" data-status="unknown" aria-live="polite">&nbsp;</div>
-                        <button type="button" class="krixen-btn krixen-book-room" data-room-id="<?php echo esc_attr($room->id); ?>" data-capacity="<?php echo esc_attr( (int) $room->capacity ); ?>" data-room-name="<?php echo esc_attr($room->name); ?>" aria-label="<?php echo esc_attr( sprintf( __( 'Book %s', 'krixen' ), $room->name ) ); ?>"><?php _e('Book This Room','krixen'); ?></button>
-                    </div>
+        <div class="krixen-tw font-[Inter,sans-serif]">
+            <div class="min-h-screen flex flex-col items-center justify-center p-4 lg:p-8">
+                <div class="w-full max-w-5xl mx-auto">
+                    <header class="text-center mb-10">
+                        <h1 class="text-4xl md:text-5xl font-bold text-gray-800">
+                            K<span class="text-orange-600">C</span>W
+                        </h1>
+                        <p class="text-lg text-gray-600 mt-2">Krixen Conference Workspace</p>
+                        <h2 class="text-3xl font-bold text-gray-800 mt-4"><?php echo esc_html__('Krixen Booking','krixen'); ?></h2>
+                    </header>
+
+                    <main>
+                        <section id="roomSelection">
+                            <h2 class="text-2xl font-semibold text-center mb-8 text-gray-700"><?php echo esc_html__('Select a Room to Begin','krixen'); ?></h2>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                                <?php foreach ( $rooms as $room ) : ?>
+                                    <div class="room-card bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-transparent hover:border-orange-500" data-room-id="<?php echo esc_attr($room->id); ?>" data-room-name="<?php echo esc_attr($room->name); ?>" data-capacity="<?php echo esc_attr((int)$room->capacity); ?>">
+                                        <h3 class="text-xl font-bold text-gray-900 mb-2"><?php echo esc_html($room->name); ?></h3>
+                                        <div class="flex items-center text-gray-600 mb-6">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                            </svg>
+                                            <span class="font-medium"><?php echo esc_html( sprintf( __('%d People','krixen'), (int)$room->capacity ) ); ?></span>
+                                        </div>
+                                        <button class="select-room-btn w-full bg-orange-600 text-white py-2 rounded-lg font-semibold hover:bg-orange-700 transition-colors" type="button"><?php echo esc_html__('View Availability','krixen'); ?></button>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </section>
+
+                        <section id="bookingSection" class="max-h-0 overflow-hidden transition-height duration-700 ease-in-out mt-12" aria-hidden="true">
+                            <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                                <div class="flex justify-between items-start mb-6">
+                                    <h2 id="bookingHeader" class="text-2xl font-semibold text-gray-800"></h2>
+                                    <button id="closeBookingBtn" class="text-gray-500 hover:text-gray-800 transition-colors" type="button" aria-label="<?php echo esc_attr__('Close booking form','krixen'); ?>">
+                                        <span class="text-3xl font-bold">&times;</span>
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+                                    <form id="bookingForm" class="space-y-6" method="post" novalidate>
+                                        <?php wp_nonce_field( 'krixen_booking_action', 'krixen_booking_nonce_field' ); ?>
+                                        <input type="hidden" name="room_id" id="room_id" value="" />
+                                        <div>
+                                            <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1"><?php echo esc_html__('Full Name','krixen'); ?> *</label>
+                                            <input type="text" id="full_name" name="full_name" required class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm" />
+                                        </div>
+                                        <div>
+                                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1"><?php echo esc_html__('Email','krixen'); ?> *</label>
+                                            <input type="email" id="email" name="email" required class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm" />
+                                        </div>
+                                        <div>
+                                            <label for="bookingDate" class="block text-sm font-medium text-gray-700 mb-1"><?php echo esc_html__('Date','krixen'); ?> *</label>
+                                            <input type="date" id="bookingDate" name="date" required class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm" />
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label for="startTime" class="block text-sm font-medium text-gray-700 mb-1"><?php echo esc_html__('Start Time','krixen'); ?> *</label>
+                                                <input type="time" id="startTime" name="start_time" required class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 shadow-sm" />
+                                            </div>
+                                            <div>
+                                                <label for="endTime" class="block text-sm font-medium text-gray-700 mb-1"><?php echo esc_html__('End Time','krixen'); ?> *</label>
+                                                <input type="time" id="endTime" name="end_time" required class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 shadow-sm" />
+                                            </div>
+                                        </div>
+                                        <div class="pt-4">
+                                            <button id="bookNowBtn" type="submit" disabled class="w-full bg-orange-600 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 disabled:scale-100">
+                                                <span class="btn-text"><?php echo esc_html__('Book Now','krixen'); ?></span>
+                                                <span class="btn-loader hidden">
+                                                    <svg class="animate-spin h-5 w-5 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                </span>
+                                            </button>
+                                            <p id="formError" class="text-red-500 text-sm mt-3 h-5 text-center"></p>
+                                        </div>
+                                    </form>
+
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center lg:text-left"><?php echo esc_html__('Availability for','krixen'); ?> <span id="timelineDate">Today</span></h3>
+                                        <div id="bookingTimeline" class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="timeline-slots">
+                                                <div class="text-center text-gray-500 py-10 col-span-2 sm:col-span-3">
+                                                    <p><?php echo esc_html__('Select a room to see availability.','krixen'); ?></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </main>
                 </div>
-            <?php endforeach; ?>
+            </div>
+
+            <div id="toast" class="fixed top-5 right-5 bg-green-500 text-white py-3 px-6 rounded-lg shadow-xl translate-x-[120%] transform transition-transform duration-500 ease-in-out">
+                <p>🎉 <?php echo esc_html__('Booking Confirmed!','krixen'); ?></p>
+            </div>
         </div>
-        <form id="krixen-booking-form" class="krixen-booking-form" method="post" style="display:none;">
-            <?php wp_nonce_field( 'krixen_booking_action', 'krixen_booking_nonce_field' ); ?>
-            <div class="krixen-field"><label><?php _e( 'Full Name', 'krixen' ); ?>*</label><input type="text" name="full_name" required></div>
-            <div class="krixen-field"><label><?php _e( 'Email', 'krixen' ); ?>*</label><input type="email" name="email" required></div>
-            <div class="krixen-field"><label><?php _e( 'Select Room', 'krixen' ); ?>*</label>
-                <select name="room_id" required>
-                    <option value=""><?php _e( 'Select', 'krixen' ); ?></option>
-                    <?php foreach ( $rooms as $room ) : ?>
-                        <option value="<?php echo esc_attr( $room->id ); ?>" data-capacity="<?php echo esc_attr( $room->capacity ); ?>"><?php echo esc_html( $room->name . ' — ' . $room->capacity . ' person' ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="krixen-two-cols">
-                <div class="krixen-field"><label><?php _e( 'Date', 'krixen' ); ?>*</label><input type="date" name="date" value="<?php echo esc_attr($default_date); ?>" min="<?php echo esc_attr($default_date); ?>" required></div>
-                <div class="krixen-field"><label><?php _e( 'Start Time', 'krixen' ); ?>*</label>
-                    <select name="start_time" required></select>
-                </div>
-                <div class="krixen-field"><label><?php _e( 'End Time', 'krixen' ); ?></label><input type="text" name="end_time" readonly></div>
-            </div>
-            <div class="krixen-field">
-                <label><?php _e( 'Availability', 'krixen' ); ?></label>
-                <div id="krixen-availability" class="krixen-availability" aria-live="polite" role="list"></div>
-            </div>
-            
-            <button type="submit" class="krixen-btn"><?php _e( 'Book Now', 'krixen' ); ?></button>
-            <p class="krixen-message" style="display:none;"></p>
-        </form>
         <?php
         return ob_get_clean();
     }

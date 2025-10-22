@@ -1,4 +1,19 @@
 jQuery(document).ready(function($){
+    // Tailwind-based UI integration from the provided design
+    var bookingSection = $('#bookingSection');
+    var bookingHeader  = $('#bookingHeader');
+    var closeBooking   = $('#closeBookingBtn');
+    var bookingForm    = $('#bookingForm');
+    var toast          = $('#toast');
+    var roomIdInput    = $('#room_id');
+    var dateInput      = $('#bookingDate');
+    var startInput     = $('#startTime');
+    var endInput       = $('#endTime');
+    var timelineDate   = $('#timelineDate');
+    var timelineSlots  = $('#timeline-slots');
+    var formError      = $('#formError');
+    var bookBtn        = $('#bookNowBtn');
+
     function todayYmd(){
         var t = new Date();
         var yyyy = t.getFullYear();
@@ -7,46 +22,136 @@ jQuery(document).ready(function($){
         return yyyy+'-'+mm+'-'+dd;
     }
 
-    // New UX: clicking "Book This Room" moves the form under the card
-    $(document).on('click', '.krixen-book-room', function(){
-        var btn   = $(this);
-        var card  = btn.closest('.krixen-room-card');
-        var form  = $('#krixen-booking-form');
-        var roomId = btn.data('room-id') || card.data('room-id');
-        var cap    = parseInt(btn.data('capacity') || 0, 10);
-        var roomName = card.find('.krixen-room-name').text() || btn.data('room-name') || '';
+    function ampmLabel(hh, mm){
+        var h = hh % 12; if(h===0) h = 12;
+        var ampm = hh >= 12 ? 'PM' : 'AM';
+        return (h<10?(''+h):''+h)+':'+('0'+mm).slice(-2)+' '+ampm;
+    }
 
-        // Set selected room in form
-        $('select[name="room_id"]').val(roomId).trigger('change');
+    function setMinDate(){
+        var t = todayYmd();
+        dateInput.attr('min', t);
+        if(!dateInput.val()) dateInput.val(t);
+        timelineDate.text(new Date(dateInput.val()).toLocaleString('en-US', {day:'numeric', month:'long'}));
+    }
 
-        // Ensure date has at least today
-        var dateEl = $('input[name="date"]');
-        if(!dateEl.val()){ dateEl.val(todayYmd()); }
-
-        // Show contextual status
-        var status = $('#krixen-room-status');
-        status.show().text('Checking availability for '+roomName+(cap?(' (Capacity: '+cap+')'):'')+'...').removeClass('ok warn');
-
-        // Move and reveal the form under the selected card
-        var insertAndShow = function(){
-            form.insertAfter(card);
-            form.stop(true, true).hide().slideDown(200);
-        };
-        if(form.is(':visible')){
-            form.stop(true, true).slideUp(150, insertAndShow);
+    function toggleBookingSection(open){
+        if(open){
+            bookingSection.attr('aria-hidden','false');
+            bookingSection.css('maxHeight', bookingSection.get(0).scrollHeight + 'px');
         } else {
-            insertAndShow();
+            bookingSection.attr('aria-hidden','true');
+            bookingSection.css('maxHeight', '0px');
         }
+    }
 
-        // Refresh availability and populate slots
-        refreshAvailability(function(hasBookings){
-            if(hasBookings){
-                status.text('Some times are booked. Please choose an available time below.').removeClass('ok').addClass('warn');
-            } else {
-                status.text('Room is available for the selected date.').removeClass('warn').addClass('ok');
-            }
+    function refreshAvailability(cb){
+        var rid = roomIdInput.val();
+        var date = dateInput.val();
+        if(!rid || !date){ timelineSlots.empty(); if(cb) cb(false); return; }
+        $.post(KrixenBooking.ajax_url, {action:'krixen_check_availability', nonce:KrixenBooking.nonce, room_id:rid, date:date}, function(resp){
+            // Build human-friendly booked list and also populate start time options from time slots endpoint
+            buildTimeSlots(rid, date, cb);
         });
+    }
+
+    function buildTimeSlots(rid, date, cb){
+        $.post(KrixenBooking.ajax_url, {action:'get_krixen_time_slots', nonce:KrixenBooking.nonce, room_id:rid, date:date, duration:3}, function(resp){
+            timelineSlots.empty();
+            startInput.val('');
+            endInput.val('');
+            var hasBookings = false;
+            if(resp.success){
+                var any = false;
+                resp.data.forEach(function(slot){
+                    any = true;
+                    var card = $('<div/>').addClass('p-2.5 rounded-lg border text-center transition-all');
+                    var border = slot.available ? 'border-gray-200 hover:border-orange-400 hover:shadow-sm' : 'border-red-200';
+                    var bg = slot.available ? 'bg-white' : 'bg-red-50';
+                    card.addClass(border+' '+bg);
+                    var dot = $('<div/>').addClass('w-2 h-2 rounded-full mr-1.5 '+(slot.available?'bg-green-500':'bg-red-500'));
+                    var status = $('<span/>').addClass('text-xs font-medium '+(slot.available?'text-green-800':'text-red-800')).text(slot.available?'Available':'Booked');
+                    card.append($('<p/>').addClass('font-medium text-gray-800').css('font-size','0.8rem').text(slot.label));
+                    var row = $('<div/>').addClass('flex items-center justify-center mt-1.5').append(dot).append(status);
+                    card.append(row);
+                    if(slot.available){
+                        card.css('cursor','pointer').attr('tabindex',0).on('click keypress', function(e){
+                            if(e.type==='click' || e.key==='Enter' || e.key===' '){
+                                startInput.val(slot.start_24);
+                                endInput.val(slot.end_24);
+                                validateForm();
+                            }
+                        });
+                    } else { hasBookings = true; }
+                    timelineSlots.append(card);
+                });
+                if(!any){
+                    timelineSlots.append('<div class="text-center text-gray-500 py-10 col-span-full"><p>No available slots.</p></div>');
+                }
+            }
+            if(cb) cb(hasBookings);
+        });
+    }
+
+    function validateForm(showShake){
+        formError.text('');
+        var valid = true;
+        var start = startInput.val();
+        var end   = endInput.val();
+        var date  = dateInput.val();
+        if(!$('#full_name').val() || !$('#email').val() || !date || !start || !end){ valid = false; }
+        if(start && end && end <= start){ formError.text('End time must be after start time.'); valid = false; }
+        bookBtn.prop('disabled', !valid);
+        if(!valid && showShake){ formError.addClass('shake'); setTimeout(function(){ formError.removeClass('shake'); }, 500); }
+        return valid;
+    }
+
+    // Room selection: open section, set room, load availability
+    $(document).on('click', '.room-card, .room-card .select-room-btn', function(e){
+        var card = $(this).closest('.room-card');
+        var rid = card.data('room-id');
+        var name = card.data('room-name');
+        roomIdInput.val(rid);
+        bookingHeader.text('Book '+name);
+        $('.room-card').removeClass('ring-2 ring-orange-500');
+        card.addClass('ring-2 ring-orange-500');
+        setMinDate();
+        toggleBookingSection(true);
+        $('html, body').animate({scrollTop: bookingSection.offset().top - 60}, 300);
+        refreshAvailability();
     });
+
+    // Close booking
+    closeBooking.on('click', function(){ toggleBookingSection(false); $('.room-card').removeClass('ring-2 ring-orange-500'); bookingForm.get(0).reset(); setMinDate(); validateForm(); });
+
+    // Date change triggers availability
+    dateInput.on('change', function(){ timelineDate.text(new Date($(this).val()).toLocaleString('en-US',{day:'numeric',month:'long'})); refreshAvailability(); validateForm(); });
+
+    // Form submission via AJAX
+    bookingForm.on('submit', function(e){
+        e.preventDefault();
+        if(!validateForm(true)) return;
+        var btnText = bookBtn.find('.btn-text');
+        var btnLoader = bookBtn.find('.btn-loader');
+        btnText.addClass('hidden'); btnLoader.removeClass('hidden'); bookBtn.prop('disabled', true);
+        var data = bookingForm.serializeArray();
+        data.push({name:'action', value:'krixen_submit_booking'});
+        data.push({name:'nonce', value: KrixenBooking.nonce});
+        $.post(KrixenBooking.ajax_url, data, function(resp){
+            if(resp && resp.success){
+                toast.removeClass('translate-x-[120%]');
+                setTimeout(function(){ toast.addClass('translate-x-[120%]'); }, 3000);
+                // Refresh availability to reflect the new booking
+                refreshAvailability();
+            } else {
+                formError.text(resp && resp.data ? resp.data : 'Error while booking.');
+            }
+        }).always(function(){ btnText.removeClass('hidden'); btnLoader.addClass('hidden'); bookBtn.prop('disabled', false); });
+    });
+
+    // Initial setup
+    setMinDate();
+    validateForm();
     $('#krixen-booking-form').on('submit',function(e){
         e.preventDefault();
         var form = $(this);
@@ -152,8 +257,5 @@ jQuery(document).ready(function($){
         });
     }
 
-    $('select[name="room_id"], input[name="date"]').on('change', refreshAvailability);
-    $('select[name="start_time"]').on('change', updateEndTime);
-    // Initialize once if values prefilled (Elementor preview)
-    refreshAvailability();
+    // Old handlers removed; new design uses inputs and timeline tiles
 });
