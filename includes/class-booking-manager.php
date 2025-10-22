@@ -45,8 +45,8 @@ class Booking_Manager {
     }
 
     public function enqueue_assets() {
-        wp_enqueue_style( 'krixen-style', KRIXEN_PLUGIN_URL . 'assets/css/style.css', [], '1.0.0' );
-        wp_enqueue_script( 'krixen-js', KRIXEN_PLUGIN_URL . 'assets/js/form.js', [ 'jquery' ], '1.0.0', true );
+        wp_enqueue_style( 'krixen-style', KRIXEN_PLUGIN_URL . 'assets/css/style.css', [], KRIXEN_VERSION );
+        wp_enqueue_script( 'krixen-js', KRIXEN_PLUGIN_URL . 'assets/js/form.js', [ 'jquery' ], KRIXEN_VERSION, true );
         wp_localize_script( 'krixen-js', 'KrixenBooking', [
             'ajax_url' => admin_url( 'admin-ajax.php' ),
             'nonce'    => wp_create_nonce( 'krixen_booking_nonce' ),
@@ -69,7 +69,7 @@ class Booking_Manager {
         $add       = ( $minutes % 30 === 0 ) ? 0 : (30 - ($minutes % 30));
         $rounded   = $timestamp + ($add * 60);
         $default_start = date('H:i', $rounded);
-        $default_end   = date('H:i', $rounded + 60 * 60);
+        $default_end   = date('H:i', $rounded + 3 * 60 * 60);
         $default_date  = date('Y-m-d', $timestamp);
         ?>
         <div class="krixen-brand">
@@ -81,20 +81,22 @@ class Booking_Manager {
         </div>
         <div id="krixen-room-status" class="krixen-room-status" style="display:none;"></div>
         <div class="krixen-rooms-grid">
-            <?php foreach ( $rooms as $room ) : ?>
+            <?php foreach ( $rooms as $room ) :
+                $img = ! empty( $room->image_url ) ? $room->image_url : ( KRIXEN_PLUGIN_URL . 'assets/img/no-room.svg' );
+            ?>
                 <div class="krixen-room-card" data-room-id="<?php echo esc_attr($room->id); ?>">
-                    <?php if ( ! empty($room->image_url) ) : ?><img src="<?php echo esc_url($room->image_url); ?>" alt="<?php echo esc_attr($room->name); ?>" /><?php endif; ?>
+                    <img src="<?php echo esc_url($img); ?>" alt="<?php echo esc_attr($room->name); ?>" />
                     <div class="krixen-room-card-body">
                         <div class="krixen-room-name"><?php echo esc_html($room->name); ?></div>
-                        <div class="krixen-room-capacity"><?php echo esc_html( sprintf( __( 'Capacity: %d', 'krixen' ), (int)$room->capacity ) ); ?></div>
+                        <div class="krixen-room-capacity"><?php echo esc_html( sprintf( __( 'Capacity: %d people', 'krixen' ), (int)$room->capacity ) ); ?></div>
                         <?php if ( ! empty($room->description) ) : ?><div class="krixen-room-desc"><?php echo esc_html($room->description); ?></div><?php endif; ?>
                         <div class="krixen-room-status-badge" data-status="unknown">&nbsp;</div>
-                        <button type="button" class="krixen-btn krixen-book-room" data-room-id="<?php echo esc_attr($room->id); ?>"><?php _e('Book This Room','krixen'); ?></button>
+                        <button type="button" class="krixen-btn krixen-book-room" data-room-id="<?php echo esc_attr($room->id); ?>" data-capacity="<?php echo esc_attr( (int) $room->capacity ); ?>" aria-label="<?php echo esc_attr( sprintf( __( 'Book %s', 'krixen' ), $room->name ) ); ?>"><?php _e('Book This Room','krixen'); ?></button>
                     </div>
                 </div>
             <?php endforeach; ?>
         </div>
-        <form id="krixen-booking-form" class="krixen-booking-form" method="post" style="display:none;">
+        <form id="krixen-booking-form" class="krixen-booking-form" method="post" style="display:none;" aria-live="polite" aria-hidden="true">
             <?php wp_nonce_field( 'krixen_booking_action', 'krixen_booking_nonce_field' ); ?>
             <div class="krixen-field"><label><?php _e( 'Full Name', 'krixen' ); ?>*</label><input type="text" name="full_name" required></div>
             <div class="krixen-field"><label><?php _e( 'Email', 'krixen' ); ?>*</label><input type="email" name="email" required></div>
@@ -118,7 +120,7 @@ class Booking_Manager {
                 <div id="krixen-availability" class="krixen-availability"></div>
             </div>
             
-            <button type="submit" class="krixen-btn"><?php _e( 'Book Now', 'krixen' ); ?></button>
+            <button type="submit" class="krixen-btn" aria-live="polite"><?php _e( 'Book Now', 'krixen' ); ?></button>
             <p class="krixen-message" style="display:none;"></p>
         </form>
         <?php
@@ -191,13 +193,28 @@ class Booking_Manager {
         $room_id   = absint( $_POST['room_id'] );
         $date      = sanitize_text_field( $_POST['date'] );
         $start     = sanitize_text_field( $_POST['start_time'] );
-        $end       = sanitize_text_field( $_POST['end_time'] );
+        // Compute end server-side to avoid tampering (3-hour duration)
+        $tz        = wp_timezone();
+        try {
+            $start_dt = new \DateTimeImmutable($date.' '.$start.':00', $tz);
+            $end_dt   = $start_dt->modify('+3 hours');
+            $end      = $end_dt->format('H:i');
+        } catch ( \Exception $e ) {
+            wp_send_json_error( __( 'Invalid time.', 'krixen' ) );
+        }
         // attendees removed from form; keep DB-compatible default
         $attendees = 1;
 
         // Validate
-        if ( ! $full_name || ! is_email( $email ) || ! $room_id || ! $date || ! $start || ! $end ) {
+        if ( ! $full_name || ! is_email( $email ) || ! $room_id || ! $date || ! $start ) {
             wp_send_json_error( __( 'Please fill all mandatory fields correctly.', 'krixen' ) );
+        }
+
+        // Enforce future date
+        $today = new \DateTimeImmutable('today', $tz);
+        try { $date_dt = new \DateTimeImmutable($date.' 00:00:00', $tz); } catch (\Exception $e) { wp_send_json_error(__('Invalid date.','krixen')); }
+        if ( $date_dt < $today ) {
+            wp_send_json_error( __( 'Please choose a future date.', 'krixen' ) );
         }
 
         $room = Room_Manager::get_room( $room_id );
