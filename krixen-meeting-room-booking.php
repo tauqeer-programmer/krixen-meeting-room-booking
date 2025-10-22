@@ -2,9 +2,11 @@
 /*
 Plugin Name: Krixen Meeting Room Booking
 Description: A simple yet powerful meeting room booking plugin.
-Version: 1.0.0
+Version: 1.1.0
 Author: UGRO
 License: GPL2
+Text Domain: krixen
+Domain Path: /languages
 */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -36,6 +38,13 @@ define( 'KRIXEN_PLUGIN_FILE', __FILE__ );
 define( 'KRIXEN_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 define( 'KRIXEN_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
+
+define( 'KRIXEN_VERSION', '1.1.0' );
+
+// Load translations
+add_action( 'init', function(){
+    load_plugin_textdomain( 'krixen', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+} );
 
 // Activation hook
 register_activation_hook( __FILE__, function () {

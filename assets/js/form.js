@@ -1,45 +1,82 @@
 jQuery(document).ready(function($){
-    // Tabs: select room and check availability
-    $('.krixen-room-tab').on('click', function(){
-        $('.krixen-room-tab').removeClass('active');
-        $(this).addClass('active');
-        var roomId = $(this).data('room-id');
-        var cap    = $(this).data('capacity');
-        $('select[name="room_id"]').val(roomId).trigger('change');
-        var date   = $('input[name="date"]').val();
-        if(!date){
-            // Prefill today if empty
-            var today = new Date();
-            var yyyy = today.getFullYear();
-            var mm = ('0'+(today.getMonth()+1)).slice(-2);
-            var dd = ('0'+today.getDate()).slice(-2);
-            $('input[name="date"]').val(yyyy+'-'+mm+'-'+dd);
+    var $form = $('#krixen-booking-form');
+    var $status = $('#krixen-room-status');
+
+    // Set min date to today
+    (function setMinDate(){
+        var today = new Date();
+        var yyyy = today.getFullYear();
+        var mm = ('0'+(today.getMonth()+1)).slice(-2);
+        var dd = ('0'+today.getDate()).slice(-2);
+        var todayStr = yyyy+'-'+mm+'-'+dd;
+        var $date = $('input[name="date"]');
+        $date.attr('min', todayStr);
+        if(!$date.val()){ $date.val(todayStr); }
+    })();
+
+    // Click handler: reveal inline form under selected card
+    $(document).on('click', '.krixen-book-room', function(){
+        var $btn = $(this);
+        var roomId = $btn.data('room-id');
+        var cap    = $btn.data('capacity');
+        var $card  = $btn.closest('.krixen-room-card');
+
+        // Move form below this card
+        $card.after($form);
+
+        // Update selected room
+        $('select[name="room_id"]').val(String(roomId)).trigger('change');
+
+        // Announce status area
+        $status.show().text(cap ? ('Capacity: '+cap) : '');
+
+        // Show with animation
+        if($form.is(':hidden')){
+            $form.attr('aria-hidden','false').slideDown(180);
         }
+
+        // Scroll into view
+        $('html, body').animate({ scrollTop: $form.offset().top - 80 }, 200);
+
+        // Ensure date default exists before fetching
+        var date = $('input[name="date"]').val();
+        if(!date){
+            var t = new Date();
+            var y = t.getFullYear(); var m=('0'+(t.getMonth()+1)).slice(-2); var d=('0'+t.getDate()).slice(-2);
+            $('input[name="date"]').val(y+'-'+m+'-'+d);
+        }
+
+        // Load availability and slots
         refreshAvailability(function(hasBookings){
-            $('#krixen-room-status').show();
             if(hasBookings){
-                $('#krixen-room-status').text('Some times are booked. Please choose an available time below.').removeClass('ok').addClass('warn');
+                $status.text('Some times are booked. Please choose an available time below.').removeClass('ok').addClass('warn');
             } else {
-                $('#krixen-room-status').text('Room is available for the selected date.').removeClass('warn').addClass('ok');
+                $status.text('Room is available for the selected date.').removeClass('warn').addClass('ok');
             }
-            $('#krixen-booking-form').show();
         });
     });
     $('#krixen-booking-form').on('submit',function(e){
         e.preventDefault();
         var form = $(this);
         var msg  = form.find('.krixen-message');
+        var btn  = form.find('button[type="submit"]');
         msg.hide().removeClass('error success');
         var data = form.serializeArray();
         data.push({name:'action',value:'krixen_submit_booking'});
         data.push({name:'nonce',value:KrixenBooking.nonce});
+        btn.prop('disabled', true).text('Booking...');
         $.post(KrixenBooking.ajax_url,data,function(response){
             if(response.success){
                 msg.addClass('success').text(response.data).css('color','green').show();
-                form[0].reset();
+                refreshAvailability();
+                setTimeout(function(){
+                    form.slideUp(180, function(){ form.attr('aria-hidden','true'); });
+                    msg.hide();
+                }, 1500);
             }else{
                 msg.addClass('error').text(response.data).css('color','red').show();
             }
+            btn.prop('disabled', false).text('Book Now');
         });
     });
 
